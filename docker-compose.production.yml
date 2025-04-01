@@ -13,7 +13,7 @@ services:
     env_file: .env
 
   backend:
-    build: ./backend/
+    image: kotpilota/kittygram_backend:latest
     env_file: .env
     depends_on:
       - db
@@ -22,8 +22,8 @@ services:
       - media:/app/media/
 
   frontend:
+    image: kotpilota/kittygram_frontend:latest
     env_file: .env
-    build: ./frontend/
     command: cp -r /app/build/. /static/
     volumes:
       - static:/static
@@ -31,7 +31,7 @@ services:
       - backend
 
   gateway:
-    build: ./nginx/
+    image: kotpilota/kittygram_gateway:latest
     env_file: .env
     ports:
       - 9000:80
