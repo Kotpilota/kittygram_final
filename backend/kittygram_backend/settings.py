@@ -1,12 +1,11 @@
-# flake8: noqa
 import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-cg6*%6d51ef8f#4!r3*$vmxm4)dbgjw1mo!4y-q*uq1!8$-00$')
+SECRET_KEY = os.getenv('SECRET_KEY')
 
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
@@ -64,9 +63,6 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', 5432)
     }
 }
-
-# Password validation
-# https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {

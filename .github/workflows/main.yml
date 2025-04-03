@@ -6,7 +6,27 @@ on:
       - main
 
 jobs:
-  tests:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+        cache: 'pip'
+        cache-dependency-path: './backend/requirements/requirements.lint.txt'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r ./backend/requirements/requirements.lint.txt
+
+    - name: Lint with flake8
+      run: |
+        python -m flake8 backend/
+
+  backend_tests:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -24,28 +44,51 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: 3.9
+        cache: 'pip'
+        cache-dependency-path: './backend/requirements/requirements.txt'
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip 
-        pip install flake8==6.0.0 flake8-isort==6.0.0
-        pip install -r ./backend/requirements.txt
-    - name: Test with flake8 and django tests
+        python -m pip install --upgrade pip
+        pip install -r ./backend/requirements/requirements.txt
+
+    - name: Run Django tests
       env:
         POSTGRES_USER: kittygram_user
         POSTGRES_PASSWORD: kittygram_password
         POSTGRES_DB: kittygram
         DB_HOST: 127.0.0.1
         DB_PORT: 5432
+        SECRET_KEY: test-secret-key
       run: |
-        python -m flake8 backend/
         cd backend/
         python manage.py test
+
+  frontend_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up nodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend/
+          npm ci
+
+      - name: Test frontend
+        run: |
+          cd frontend/
+          npm run test
 
   build_and_push_to_docker_hub:
       name: Push Docker image to DockerHub
       runs-on: ubuntu-latest
-      needs: tests
+      needs: [lint, backend_tests]
       steps:
         - name: Check out the repo
           uses: actions/checkout@v3
@@ -61,27 +104,7 @@ jobs:
           with:
             context: ./backend/
             push: true
-            tags: kotpilota/kittygram_backend:latest
-
-  frontend_tests:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up nodeJS
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Install dependencies
-        run: |
-          cd frontend/
-          npm ci
-
-      - name: Test frontend
-        run: |
-          cd frontend/
-          npm run test
+            tags: kotpilota/kittygram_backend:latest,kotpilota/kittygram_backend:${{ github.sha }}
 
   build_frontend_and_push_to_docker_hub:
     name: Push frontend Docker image to DockerHub
@@ -102,8 +125,7 @@ jobs:
         with:
           context: ./frontend/
           push: true
-          tags: kotpilota/kittygram_frontend:latest
-
+          tags: kotpilota/kittygram_frontend:latest,kotpilota/kittygram_frontend:${{ github.sha }}
 
   build_gateway_and_push_to_docker_hub:
     name: Push gateway Docker image to DockerHub
@@ -123,7 +145,7 @@ jobs:
         with:
           context: ./nginx/
           push: true
-          tags: kotpilota/kittygram_gateway:latest
+          tags: kotpilota/kittygram_gateway:latest,kotpilota/kittygram_gateway:${{ github.sha }}
 
   deploy:
     runs-on: ubuntu-latest
@@ -155,10 +177,8 @@ jobs:
             sudo docker compose -f docker-compose.production.yml pull
             sudo docker compose -f docker-compose.production.yml down
             sudo docker compose -f docker-compose.production.yml up -d
-            sudo docker exec -it kittygram-backend-1 chmod -R 777 /media || true
-            sudo docker compose -f docker-compose.production.yml exec backend python manage.py migrate
-            sudo docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic --noinput
-            sudo docker compose -f docker-compose.production.yml exec backend cp -r /app/collected_static/. /backend_static/static/
+            # Очистка неиспользуемых образов для экономии места
+            sudo docker image prune -af
 
   send_message:
     runs-on: ubuntu-latest
