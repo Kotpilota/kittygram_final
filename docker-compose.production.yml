@@ -34,7 +34,7 @@ services:
     image: kotpilota/kittygram_gateway:latest
     env_file: .env
     ports:
-      - 9000:80
+      - 8082:80
     volumes:
       - static:/staticfiles
       - media:/media
