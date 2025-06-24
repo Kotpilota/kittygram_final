@@ -11,6 +11,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
     env_file: .env
+    restart: always
 
   backend:
     image: kotpilota/kittygram_backend:latest
@@ -20,6 +21,7 @@ services:
     volumes:
       - static:/backend_static
       - media:/app/media
+    restart: always
 
   frontend:
     image: kotpilota/kittygram_frontend:latest
@@ -29,6 +31,7 @@ services:
       - static:/frontend_static
     depends_on:
       - backend
+    restart: always
 
   gateway:
     image: kotpilota/kittygram_gateway:latest
@@ -41,3 +44,4 @@ services:
     depends_on:
       - backend
       - frontend
+    restart: always
